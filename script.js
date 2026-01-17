@@ -61,16 +61,35 @@ function loadDashboardData() {
    ZOHO LOGIN
 ------------------------------------- */
 
+// function zohoLogin() {
+//   const token = localStorage.getItem("zohoToken");
+//   if (!token || !window.ZohoDeskAsapReady) return;
+
+//   window.ZohoDeskAsapReady(function () {
+//     window.ZohoDeskAsap.invoke("login", function (success) {
+//       success(token);
+//     });
+//   });
+// }
+let asapLoggedIn = false;
+
 function zohoLogin() {
   const token = localStorage.getItem("zohoToken");
-  if (!token || !window.ZohoDeskAsapReady) return;
+  if (!token || asapLoggedIn) return;
 
   window.ZohoDeskAsapReady(function () {
+    window.ZohoDeskAsap.invoke("hide");
+
     window.ZohoDeskAsap.invoke("login", function (success) {
       success(token);
+
+      asapLoggedIn = true;
+
+      window.ZohoDeskAsap.invoke("show");
     });
   });
 }
+
 
 /* ------------------------------------
    LOGOUT
