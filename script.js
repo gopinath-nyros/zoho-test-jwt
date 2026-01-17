@@ -78,17 +78,24 @@ function zohoLogin() {
   if (!token || asapLoggedIn) return;
 
   window.ZohoDeskAsapReady(function () {
+    asapLoggedIn = true;
+
+    // hide guest widget
     window.ZohoDeskAsap.invoke("hide");
 
+    // login
     window.ZohoDeskAsap.invoke("login", function (success) {
       success(token);
 
-      asapLoggedIn = true;
+      // IMPORTANT: reload widget
+      window.ZohoDeskAsap.invoke("reload");
 
+      // show authenticated widget
       window.ZohoDeskAsap.invoke("show");
     });
   });
 }
+
 
 
 /* ------------------------------------
