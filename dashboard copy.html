@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        .log-box { background: #f4f4f4; padding: 10px; border-radius: 5px; border: 1px solid #ddd; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <h2>Successfully logged in</h2>
+    <p>Check the browser console (F12) to see the detailed Zoho ASAP logs.</p>
+    
+    <div class="log-box" id="status-log">Status: Initializing...</div>
+
+    <script>
+        // Use this function to update both the UI and the Console
+        function logStatus(msg) {
+            console.log(">>> ZOHO_DEBUG:", msg);
+            document.getElementById('status-log').innerText = "Status: " + msg;
+        }
+
+        // 1. Define the logic to be called when Zoho is ready
+        function initializeZohoLogin() {
+            logStatus("ZohoDeskAsap object detected. Setting up login...");
+
+            const getJwtTokenCallback = (successCallback, failureCallback) => {
+                const token = localStorage.getItem("zoho_asap_token");
+                
+                if (token) {
+                    logStatus("JWT found in localStorage. Passing to Zoho...");
+                    successCallback(token);
+                } else {
+                    logStatus("ERROR: No JWT found in localStorage!");
+                    failureCallback("No token found");
+                }
+            };
+
+            // Invoke the login and add a secondary callback to log the result
+            try {
+                ZohoDeskAsap.invoke('login', getJwtTokenCallback);
+                logStatus("Login command sent to Zoho.");
+            } catch (e) {
+                logStatus("CRITICAL ERROR: " + e.message);
+            }
+        }
+
+        // 2. The Official Hook
+        window.ZohoDeskAsapReady = function() {
+            logStatus("ZohoDeskAsapReady event fired!");
+            initializeZohoLogin();
+        };
+
+        // 3. Safety Poller (If the Ready event was missed)
+        let pollerCount = 0;
+        const poller = setInterval(() => {
+            pollerCount++;
+            if (window.ZohoDeskAsap && typeof ZohoDeskAsap.invoke === 'function') {
+                logStatus("Poller found ZohoDeskAsap! Initializing now...");
+                initializeZohoLogin();
+                clearInterval(poller);
+            } else if (pollerCount > 50) { // Stop after 5 seconds
+                logStatus("Poller timed out. Script might not be loading.");
+                clearInterval(poller);
+            }
+        }, 100);
+    </script>
+
+    <script 
+        type="text/javascript" 
+        src="https://desk.zoho.com/portal/api/web/asapApp/1244102000000561426?orgId=909031120">
+    </script>
+</body>
+</html>
