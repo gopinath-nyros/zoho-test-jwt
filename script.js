@@ -1,141 +1,107 @@
 const API_BASE =
   "https://locatrix-backend-development.up.railway.app/api/user";
 
-/* ------------------------------------
-   LOGIN
-------------------------------------- */
+/* ---------------- LOGIN ---------------- */
 
-async function handleLogin(event) {
-  event.preventDefault();
+async function handleLogin(e) {
+  e.preventDefault();
 
-  const emailInput = document.getElementById("email");
-  const passwordInput = document.getElementById("password");
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
 
-  if (!emailInput || !passwordInput) return;
+  console.log("[LOGIN] Attempting login...");
 
   try {
-    const response = await fetch(`${API_BASE}/login`, {
+    const res = await fetch(`${API_BASE}/login`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        email: emailInput.value,
-        password: passwordInput.value,
-      }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
     });
 
-    const result = await response.json();
+    const result = await res.json();
 
-    if (!response.ok) throw new Error(result.message);
+    if (!res.ok) {
+      console.error("[LOGIN] Login failed:", result);
+      alert("Login failed: " + (result.message || "Unknown error"));
+      return;
+    }
 
     const user = result.data.user;
 
+    console.log("[LOGIN] Login successful:", user);
+
+    // Store user data
     localStorage.setItem("email", user.email);
     localStorage.setItem("name", user.fullName);
     localStorage.setItem("zohoToken", user.zohoToken);
 
+    console.log("[LOGIN] Stored zohoToken:", user.zohoToken);
+
+    // Redirect to dashboard
     window.location.href = "dashboard.html";
-  } catch (err) {
-    alert("Login failed");
+  } catch (error) {
+    console.error("[LOGIN] Error:", error);
+    alert("Login error: " + error.message);
   }
 }
 
-/* ------------------------------------
-   DASHBOARD
-------------------------------------- */
+/* ---------------- AUTH GUARD ---------------- */
 
-function loadDashboardData() {
-  const emailEl = document.getElementById("email");
-  const nameEl = document.getElementById("name");
-  const tokenEl = document.getElementById("token");
-
-  if (!emailEl || !nameEl || !tokenEl) return;
-
-  emailEl.innerText = "Email: " + localStorage.getItem("email");
-  nameEl.innerText = "Name: " + localStorage.getItem("name");
-  tokenEl.innerText = "Zoho Token: " + localStorage.getItem("zohoToken");
-}
-
-/* ------------------------------------
-   ZOHO LOGIN
-------------------------------------- */
-
-// function zohoLogin() {
-//   const token = localStorage.getItem("zohoToken");
-//   if (!token || !window.ZohoDeskAsapReady) return;
-
-//   window.ZohoDeskAsapReady(function () {
-//     window.ZohoDeskAsap.invoke("login", function (success) {
-//       success(token);
-//     });
-//   });
-// }
-let asapLoggedIn = false;
-
-function zohoLogin() {
+function requireAuth() {
   const token = localStorage.getItem("zohoToken");
-  if (!token || asapLoggedIn) return;
-
-  window.ZohoDeskAsapReady(function () {
-    asapLoggedIn = true;
-
-    // hide guest widget
-    window.ZohoDeskAsap.invoke("hide");
-
-    // login
-    window.ZohoDeskAsap.invoke("login", function (success) {
-      success(token);
-
-      // IMPORTANT: reload widget
-      window.ZohoDeskAsap.invoke("reload");
-
-      // show authenticated widget
-      window.ZohoDeskAsap.invoke("show");
-    });
-  });
+  
+  if (!token) {
+    console.log("[AUTH] No token found, redirecting to login...");
+    window.location.href = "index.html";
+    return false;
+  }
+  
+  console.log("[AUTH] Token found, user authenticated");
+  return true;
 }
 
+/* ---------------- DASHBOARD ---------------- */
 
+function loadDashboard() {
+  const email = localStorage.getItem("email");
+  const name = localStorage.getItem("name");
+  const token = localStorage.getItem("zohoToken");
 
-/* ------------------------------------
-   LOGOUT
-------------------------------------- */
+  console.log("[DASHBOARD] Loading dashboard data:", { email, name, token });
 
-async function handleLogout() {
-  try {
-    await fetch(`${API_BASE}/logout`, {
-      method: "POST",
-      credentials: "include",
-    });
-  } catch (_) {}
+  document.getElementById("email").innerText = "Email: " + (email || "N/A");
+  document.getElementById("name").innerText = "Name: " + (name || "N/A");
+  document.getElementById("token").innerText = "Zoho Token: " + (token || "N/A");
+}
 
-  if (window.ZohoDeskAsapReady) {
-    window.ZohoDeskAsapReady(function () {
-      window.ZohoDeskAsap.invoke("logout");
-    });
-  }
+/* ---------------- LOGOUT ---------------- */
 
+function handleLogout() {
+  console.log("[LOGOUT] Logging out...");
   localStorage.clear();
   window.location.href = "index.html";
 }
 
-/* ------------------------------------
-   INIT
-------------------------------------- */
+/* ---------------- INIT ---------------- */
 
 document.addEventListener("DOMContentLoaded", () => {
-  // login page
+  console.log("[INIT] Page loaded");
+
   const loginForm = document.getElementById("loginForm");
+  const logoutBtn = document.getElementById("logoutBtn");
+
   if (loginForm) {
+    console.log("[INIT] Login page detected");
     loginForm.addEventListener("submit", handleLogin);
+    return;
   }
 
-  // dashboard page
-  const logoutBtn = document.getElementById("logoutBtn");
   if (logoutBtn) {
-    loadDashboardData();
-    zohoLogin();
+    console.log("[INIT] Dashboard page detected");
+    
+    if (!requireAuth()) return;
+    
+    loadDashboard();
     logoutBtn.addEventListener("click", handleLogout);
   }
 });

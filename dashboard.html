@@ -5,32 +5,70 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Dashboard</title>
 
-    <!-- REQUIRED: ASAP readiness queue -->
+    <!-- ✅ MUST BE BEFORE ASAP SCRIPT -->
     <script>
-      window.ZohoDeskAsapReady = function (callback) {
-        var asyncCalls =
-          window.ZohoDeskAsap__asyncalls =
-          window.ZohoDeskAsap__asyncalls || [];
+      window.getJwtTokenCallback = function (successCallback, failureCallback) {
+        console.log("[ASAP] getJwtTokenCallback called");
 
-        if (window.ZohoDeskAsapReadyStatus) {
-          if (callback) asyncCalls.push(callback);
-          asyncCalls.forEach(function (cb) {
-            cb && cb();
-          });
-          window.ZohoDeskAsap__asyncalls = null;
-        } else if (callback) {
-          asyncCalls.push(callback);
-        }
+        // Wrap in setTimeout to make it async like Zoho expects
+        setTimeout(() => {
+          try {
+            const token = localStorage.getItem("zohoToken");
+            
+            console.log("[ASAP] JWT read from localStorage:", token);
+
+            if (!token) {
+              console.error("[ASAP] No token found in localStorage");
+              failureCallback("JWT not found in localStorage");
+              return;
+            }
+
+            console.log("[ASAP] Calling successCallback with token");
+            successCallback(token);
+          } catch (err) {
+            console.error("[ASAP] Error:", err);
+            failureCallback(err.message || err);
+          }
+        }, 0);
       };
     </script>
 
-    <!-- Zoho ASAP widget -->
+    <!-- ✅ ZOHO ASAP BOOTSTRAP SCRIPT -->
     <script
-      src="https://desk.zoho.com/portal/api/web/asapApp/1244102000000541474?orgId=909031120"
-      defer
-    ></script>
+      type="text/javascript"
+      id="zohodeskasap"
+    >
+      var d=document;
+      s=d.createElement("script"),
+      s.type="text/javascript",
+      s.id="zohodeskasapscript",
+      s.defer=!0,
+      s.src="https://desk.zoho.com/portal/api/web/asapApp/1244102000000541474?orgId=909031120",
+      t=d.getElementsByTagName("script")[0],
+      t.parentNode.insertBefore(s,t),
+      window.ZohoDeskAsapReady=function(s){
+        console.log("[ASAP] Ready function called");
+        
+        var e=window.ZohoDeskAsap__asyncalls=window.ZohoDeskAsap__asyncalls||[];
+        window.ZohoDeskAsapReadyStatus
+          ? (s&&e.push(s),e.forEach(s=>s&&s()),window.ZohoDeskAsap__asyncalls=null)
+          : s&&e.push(s)
+      };
+    </script>
 
-    <!-- App logic -->
+    <!-- ✅ Trigger login after ASAP is ready -->
+    <script>
+      window.ZohoDeskAsapReady(() => {
+        console.log("[ASAP] ASAP is ready, invoking login...");
+        
+        if (window.ZohoDeskAsap && window.ZohoDeskAsap.invoke) {
+          window.ZohoDeskAsap.invoke('login', window.getJwtTokenCallback);
+        } else {
+          console.error("[ASAP] ZohoDeskAsap.invoke not available");
+        }
+      });
+    </script>
+
     <script defer src="./script.js"></script>
   </head>
 
@@ -40,8 +78,6 @@
     <h3 id="email"></h3>
     <h3 id="name"></h3>
     <h3 id="token"></h3>
-
-    <br />
 
     <button id="logoutBtn">Logout</button>
   </body>
